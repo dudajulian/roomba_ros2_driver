@@ -1,0 +1,3 @@
+port: /dev/ttyACM0  # Port where Roomba is connected
+baudrate: 115200    # Default baudrate for Roomba 600/700/800/900 series
+timeout: 0.1        # Serial timeout in seconds
