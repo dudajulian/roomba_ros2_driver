@@ -1,3 +1,6 @@
-port: /dev/ttyACM0  # Port where Roomba is connected
-baudrate: 115200    # Default baudrate for Roomba 600/700/800/900 series
-timeout: 0.1        # Serial timeout in seconds
+roomba_driver:
+  ros__parameters:
+    port: /dev/ttyACM0  # Port where Roomba is connected
+    baudrate: 115200    # Default baudrate for Roomba 600/700/800/900 series
+    timeout: 0.1        # Serial timeout in seconds
+    mode: 132           # Full mode (132) for full control, 131 for safe mode
