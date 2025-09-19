@@ -3,11 +3,10 @@ from rclpy.node import Node
 import serial
 import time
 import math
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
 import tf_transformations
 from tf2_ros import TransformBroadcaster
-from geometry_msgs.msg import TransformStamped
 
 
 class RoombaDriver(Node):
@@ -18,12 +17,14 @@ class RoombaDriver(Node):
         self.declare_parameter('baudrate', 115200)
         self.declare_parameter('timeout', 0.1)
         self.declare_parameter('mode', 130)
+        self.declare_parameter('debug', True)
 
         # Read parameters
         self._port = self.get_parameter('port').get_parameter_value().string_value
         self._baudrate = self.get_parameter('baudrate').get_parameter_value().integer_value
         self._timeout = self.get_parameter('timeout').get_parameter_value().double_value
         self._mode = self.get_parameter('mode').get_parameter_value().integer_value
+        self._debug = self.get_parameter('debug').get_parameter_value().bool_value
 
         # Odometry state
         self.x = 0.0
@@ -39,7 +40,10 @@ class RoombaDriver(Node):
             baudrate=self._baudrate,
             timeout=self._timeout
         )
-    
+
+        # TF Broadcaster
+        self.tf_broadcaster = TransformBroadcaster(self)
+
 # ---------------------------------------------------------------------------------------
 
     def start(self):
@@ -60,7 +64,7 @@ class RoombaDriver(Node):
             self.get_logger().info("Waiting for serial connection...")
             rclpy.sleep(0.2)
         self.get_logger().info(f"Serial connection established: port={self._port}, baudrate={self._baudrate}, timeout={self._timeout}, mode={self._mode}")
-        
+
         # Subscribe to cmd_vel topic
         self.subscription = self.create_subscription(Twist, 'cmd_vel', self.cmdVelCallback, 10)
         self.get_logger().info("Subscribed to cmd_vel topic")
@@ -68,7 +72,7 @@ class RoombaDriver(Node):
         # Publisher
         self.odom_publisher = self.create_publisher(Odometry, 'roomba_ros2_driver/odom', 10)
         self.get_logger().info("Publisher to odom topic created")
-       
+
         # Log node is running
         self.get_logger().info("RoombaDriver Node Running!")
 
@@ -90,8 +94,10 @@ class RoombaDriver(Node):
             + list(linear_velocity.to_bytes(2, 'big', signed=True)) \
             + list(radius.to_bytes(2, 'big', signed=True))
 
-        self.get_logger().info(f"Drive command: {drive_command}")
         self.ser.write(bytes(drive_command))
+
+        if self._debug:
+            self.get_logger().info(f"Drive command: {drive_command}")
 
 # ---------------------------------------------------------------------------------------
 
@@ -99,10 +105,9 @@ class RoombaDriver(Node):
         """
         Reads the Distance and Angle sensor values from the Roomba and publishes the odometry.
         """
-        distance = self.requestDistance()
+        distance_m = self.requestDistance()
         angle = self.requestAngle()
-        if distance is not None and angle is not None:
-            distance_m = distance / 1000.0  # mm to meters
+        if distance_m is not None and angle is not None:
             # Save previous theta for velocity calculation
             prev_theta = self.theta
             prev_x = self.x
@@ -137,6 +142,20 @@ class RoombaDriver(Node):
 
             self.odom_publisher.publish(odom_msg)
 
+            # Publish TF transform from odom to base_link
+            t = TransformStamped()
+            t.header.stamp = self.get_clock().now().to_msg()
+            t.header.frame_id = "odom"
+            t.child_frame_id = "base_link"
+            t.transform.translation.x = self.x
+            t.transform.translation.y = self.y
+            t.transform.translation.z = 0.0
+            t.transform.rotation.x = q[0]
+            t.transform.rotation.y = q[1]
+            t.transform.rotation.z = q[2]
+            t.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(t)
+
 # ---------------------------------------------------------------------------------------
 
     def requestDistance(self):
@@ -146,7 +165,10 @@ class RoombaDriver(Node):
         self.ser.write(bytes([142, 19]))
         data = self.ser.read(2)
         if len(data) == 2:
-            return int.from_bytes(data, byteorder='big', signed=True)
+            dist = - int.from_bytes(data, byteorder='big', signed=True) / 1000
+            if self._debug: 
+                self.get_logger().info(f"Distance: {dist} m")
+            return dist
         else:
             self.get_logger().warn("Failed to read distance data from Roomba.")
 
@@ -161,6 +183,8 @@ class RoombaDriver(Node):
         if len(data) == 2:
             difference = int.from_bytes(data, byteorder='big', signed=True)
             angle_rad = (2 * difference) / 258.0
+            if self._debug:
+                self.get_logger().info(f"Angle: {angle_rad} radians")
             return angle_rad
         else:
             self.get_logger().warn("Failed to read angle data from Roomba.")
@@ -186,7 +210,7 @@ def main(args=None):
     node.run()
     node.destroy_node()
     rclpy.shutdown()
-    
+
 # ---------------------------------------------------------------------------------------
 
 if __name__ == "__main__":
