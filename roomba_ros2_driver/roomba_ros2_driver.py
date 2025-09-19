@@ -1,14 +1,18 @@
-
 import rclpy
 from rclpy.node import Node
 import serial
 import time
+import math
 from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+import tf_transformations
+from tf2_ros import TransformBroadcaster
+from geometry_msgs.msg import TransformStamped
+
 
 class RoombaDriver(Node):
     def __init__(self):
         super().__init__('roomba_driver')
-
         # Declare parameters with default values
         self.declare_parameter('port', '/dev/ttyACM0')
         self.declare_parameter('baudrate', 115200)
@@ -21,16 +25,27 @@ class RoombaDriver(Node):
         self._timeout = self.get_parameter('timeout').get_parameter_value().double_value
         self._mode = self.get_parameter('mode').get_parameter_value().integer_value
 
+        # Odometry state
+        self.x = 0.0
+        self.y = 0.0
+        self.theta = 0.0
+
+        # Timers
+        self.timer = self.create_timer(0.2, self.computeOdom)
+
         # Establish serial connection
         self.ser = serial.Serial(
             port=self._port,
             baudrate=self._baudrate,
             timeout=self._timeout
-        )       
+        )
     
 # ---------------------------------------------------------------------------------------
 
     def start(self):
+        """
+        Start the RoombaDriver node, initialize the robot, and set up ROS interfaces.
+        """
         self.get_logger().info("Starting RoombaDriver Node...")
 
         # Initialize SCI connetinon
@@ -47,13 +62,12 @@ class RoombaDriver(Node):
         self.get_logger().info(f"Serial connection established: port={self._port}, baudrate={self._baudrate}, timeout={self._timeout}, mode={self._mode}")
         
         # Subscribe to cmd_vel topic
-        self.subscription = self.create_subscription(
-            Twist,
-            'cmd_vel',
-            self.cmdVelCallback,
-            10
-        )
+        self.subscription = self.create_subscription(Twist, 'cmd_vel', self.cmdVelCallback, 10)
         self.get_logger().info("Subscribed to cmd_vel topic")
+
+        # Publisher
+        self.odom_publisher = self.create_publisher(Odometry, 'roomba_ros2_driver/odom', 10)
+        self.get_logger().info("Publisher to odom topic created")
        
         # Log node is running
         self.get_logger().info("RoombaDriver Node Running!")
@@ -65,10 +79,12 @@ class RoombaDriver(Node):
         Callback function for cmd_vel topic. Converts Twist message to Roomba drive command.
         """
         linear_velocity = max(-500, min(500, int(msg.linear.x * 1000)))
-        
+
         if msg.angular.z != 0:
             radius = int((msg.linear.x / msg.angular.z) * 1000)
-            radius = max(-2000, min(2000, radius))    
+            radius = max(-2000, min(2000, radius))
+        else:
+            radius = 0
 
         drive_command = [137] \
             + list(linear_velocity.to_bytes(2, 'big', signed=True)) \
@@ -77,15 +93,93 @@ class RoombaDriver(Node):
         self.get_logger().info(f"Drive command: {drive_command}")
         self.ser.write(bytes(drive_command))
 
+# ---------------------------------------------------------------------------------------
+
+    def computeOdom(self):
+        """
+        Reads the Distance and Angle sensor values from the Roomba and publishes the odometry.
+        """
+        distance = self.requestDistance()
+        angle = self.requestAngle()
+        if distance is not None and angle is not None:
+            distance_m = distance / 1000.0  # mm to meters
+            # Save previous theta for velocity calculation
+            prev_theta = self.theta
+            prev_x = self.x
+            prev_y = self.y
+
+            self.theta += angle
+            self.theta = (self.theta + math.pi) % (2 * math.pi) - math.pi
+            self.x += distance_m * math.cos(self.theta)
+            self.y += distance_m * math.sin(self.theta)
+
+            # Publish odometry message
+            odom_msg = Odometry()
+            odom_msg.header.stamp = self.get_clock().now().to_msg()
+            odom_msg.header.frame_id = "odom"
+            odom_msg.child_frame_id = "base_link"
+            odom_msg.pose.pose.position.x = self.x
+            odom_msg.pose.pose.position.y = self.y
+            odom_msg.pose.pose.position.z = 0.0
+
+            # Convert theta to quaternion
+            q = tf_transformations.quaternion_from_euler(0, 0, self.theta)
+            odom_msg.pose.pose.orientation.x = q[0]
+            odom_msg.pose.pose.orientation.y = q[1]
+            odom_msg.pose.pose.orientation.z = q[2]
+            odom_msg.pose.pose.orientation.w = q[3]
+
+            # Estimate velocities (simple finite difference)
+            dt = 0.2  # timer period
+            odom_msg.twist.twist.linear.x = (self.x - prev_x) / dt
+            odom_msg.twist.twist.linear.y = (self.y - prev_y) / dt
+            odom_msg.twist.twist.angular.z = (self.theta - prev_theta) / dt
+
+            self.odom_publisher.publish(odom_msg)
+
+# ---------------------------------------------------------------------------------------
+
+    def requestDistance(self):
+        """
+        Request the distance traveled from the Roomba and return it in millimeters.
+        """
+        self.ser.write(bytes([142, 19]))
+        data = self.ser.read(2)
+        if len(data) == 2:
+            return int.from_bytes(data, byteorder='big', signed=True)
+        else:
+            self.get_logger().warn("Failed to read distance data from Roomba.")
+
+# ---------------------------------------------------------------------------------------
+
+    def requestAngle(self):
+        """
+        Requests the angle from the Roomba and returns it in radians.
+        """
+        self.ser.write(bytes([142, 20]))
+        data = self.ser.read(2)
+        if len(data) == 2:
+            difference = int.from_bytes(data, byteorder='big', signed=True)
+            angle_rad = (2 * difference) / 258.0
+            return angle_rad
+        else:
+            self.get_logger().warn("Failed to read angle data from Roomba.")
+            return None
 
 # ---------------------------------------------------------------------------------------
 
     def run(self):
+        """
+        Spin the ROS2 node.
+        """
         rclpy.spin(self)
 
 # ---------------------------------------------------------------------------------------
 
 def main(args=None):
+    """
+    Main entry point for the RoombaDriver node.
+    """
     rclpy.init(args=args)
     node = RoombaDriver()
     node.start()

@@ -8,6 +8,13 @@ A ROS2 node for controlling iRobot Roomba robots. This package subscribes to vel
 - Translates and sends commands to the Roomba robot
 - Designed for integration with other ROS2 navigation and control stacks
 
+## Setupo
+- ros2 jazzy base
+- rpi5
+- ubunut 24.04 server
+additional ros2 packages
+-  sudo apt install ros-jazzy-tf-transformations
+
 ## Usage
 
 1. **Build the package:**
