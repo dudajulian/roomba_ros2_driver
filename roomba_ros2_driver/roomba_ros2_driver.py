@@ -30,19 +30,6 @@ class RoombaDriver(Node):
     
 # ---------------------------------------------------------------------------------------
 
-    def cmdVelCallback(self, msg):
-        linear_velocity = int(msg.linear.x * 100)
-        radius = int((msg.angular.z) * 10) # TODO compute cradius from linear and angular velocity
-        # TODO check limits to be within -500 to 500 mm/s for linear velocity and and -2000 to 2000 mm for radius
-        drive_command = [137] \
-            + list(linear_velocity.to_bytes(2, 'big', signed=True)) \
-            + list(radius.to_bytes(2, 'big', signed=True))
-        
-        self.get_logger().info(f"Received cmd_vel: linear.x={msg.linear.x} mm/s, angular.z={msg.angular.z}mm | Drive command: {drive_command}") 
-        self.ser.write(bytes(drive_command))
-
-# ---------------------------------------------------------------------------------------
-
     def start(self):
         self.get_logger().info("Starting RoombaDriver Node...")
 
@@ -70,6 +57,26 @@ class RoombaDriver(Node):
        
         # Log node is running
         self.get_logger().info("RoombaDriver Node Running!")
+
+# ---------------------------------------------------------------------------------------
+
+    def cmdVelCallback(self, msg):
+        """
+        Callback function for cmd_vel topic. Converts Twist message to Roomba drive command.
+        """
+        linear_velocity = max(-500, min(500, int(msg.linear.x * 1000)))
+        
+        if msg.angular.z != 0:
+            radius = int((msg.linear.x / msg.angular.z) * 1000)
+            radius = max(-2000, min(2000, radius))    
+
+        drive_command = [137] \
+            + list(linear_velocity.to_bytes(2, 'big', signed=True)) \
+            + list(radius.to_bytes(2, 'big', signed=True))
+
+        self.get_logger().info(f"Drive command: {drive_command}")
+        self.ser.write(bytes(drive_command))
+
 
 # ---------------------------------------------------------------------------------------
 
