@@ -17,7 +17,7 @@ class RoombaDriver(Node):
         self.declare_parameter('baudrate', 115200)
         self.declare_parameter('timeout', 0.1)
         self.declare_parameter('mode', 130)
-        self.declare_parameter('debug', True)
+        self.declare_parameter('debug', False)
 
         # Read parameters
         self._port = self.get_parameter('port').get_parameter_value().string_value
@@ -30,9 +30,10 @@ class RoombaDriver(Node):
         self.x = 0.0
         self.y = 0.0
         self.theta = 0.0
+        self._t = TransformStamped()
 
         # Timers
-        self.timer = self.create_timer(0.2, self.computeOdom)
+        self.timer = self.create_timer(0.1, self.computeOdom)
 
         # Establish serial connection
         self.ser = serial.Serial(
@@ -43,6 +44,7 @@ class RoombaDriver(Node):
 
         # TF Broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
+
 
 # ---------------------------------------------------------------------------------------
 
@@ -143,18 +145,18 @@ class RoombaDriver(Node):
             self.odom_publisher.publish(odom_msg)
 
             # Publish TF transform from odom to base_link
-            t = TransformStamped()
-            t.header.stamp = self.get_clock().now().to_msg()
-            t.header.frame_id = "odom"
-            t.child_frame_id = "base_link"
-            t.transform.translation.x = self.x
-            t.transform.translation.y = self.y
-            t.transform.translation.z = 0.0
-            t.transform.rotation.x = q[0]
-            t.transform.rotation.y = q[1]
-            t.transform.rotation.z = q[2]
-            t.transform.rotation.w = q[3]
-            self.tf_broadcaster.sendTransform(t)
+            
+            self._t.header.stamp = self.get_clock().now().to_msg()
+            self._t.header.frame_id = "odom"
+            self._t.child_frame_id = "base_link"
+            self._t.transform.translation.x = self.x
+            self._t.transform.translation.y = self.y
+            self._t.transform.translation.z = 0.0
+            self._t.transform.rotation.x = q[0]
+            self._t.transform.rotation.y = q[1]
+            self._t.transform.rotation.z = q[2]
+            self._t.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(self._t)
 
 # ---------------------------------------------------------------------------------------
 
@@ -165,7 +167,7 @@ class RoombaDriver(Node):
         self.ser.write(bytes([142, 19]))
         data = self.ser.read(2)
         if len(data) == 2:
-            dist = - int.from_bytes(data, byteorder='big', signed=True) / 1000
+            dist = - int.from_bytes(data, byteorder='big', signed=True) / 100
             if self._debug: 
                 self.get_logger().info(f"Distance: {dist} m")
             return dist
@@ -182,7 +184,7 @@ class RoombaDriver(Node):
         data = self.ser.read(2)
         if len(data) == 2:
             difference = int.from_bytes(data, byteorder='big', signed=True)
-            angle_rad = (2 * difference) / 258.0
+            angle_rad = (4 * difference) / 233.0
             if self._debug:
                 self.get_logger().info(f"Angle: {angle_rad} radians")
             return angle_rad
