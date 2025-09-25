@@ -1,18 +1,31 @@
 # roomba_ros2_driver
 
-A ROS2 node for controlling iRobot Roomba robots. This package subscribes to velocity command messages (`geometry_msgs/msg/Twist`) and translates them into commands that the Roomba can understand and execute.
+A ROS2 Jazzy Node which works as a bridge between the iRobot Roomba SCI messages and the ROS2 messages. After connection the Roomba to an RPi or other sigle board computer, 
+you can run this node which subscribes to `geometry_msgs/msg/Twist` commands. Also sensor data is read and publish as well as the odometry computed and published.
 
 ## Features
 
 - Listens to ROS2 velocity commands (`/cmd_vel`)
 - Translates and sends commands to the Roomba robot
+- Odometry computed and published
 - Designed for integration with other ROS2 navigation and control stacks
 
-## Setupo
+
+## Requirements (Hardware)
+- iRobot Roomba with SCI (Roomba 400 series (with OSMO or firmware update), Roomba 500/600/700/800/900 Series)
+- Raspberry Pi 4/5 (RPi)
+- Logic Level schifter (3.3V-5V)
+- UART-to-TTL Adapter
+- DC-DC Converterd (to 5V)
+- Wires
+
+## Setup Guide
+- ROS2 Humble for RPi4 / ROS2 Jazzy for RPi5
 - ros2 jazzy base
 - rpi5
 - ubunut 24.04 server
-additional ros2 packages
+
+### additional ros2 packages
 -  sudo apt install ros-jazzy-tf-transformations
 
 ## Usage
@@ -48,16 +61,10 @@ additional ros2 packages
    ```
    This will send velocity commands to `/cmd_vel` using your keyboard.
 
-## Requirements
-
-- ROS2 (tested on Foxy/Humble)
-- Compatible Roomba robot (with appropriate serial or USB interface)
 
 ## TODO
 
 - [ ] Fix the TODOs in the code
-- [ ] Create TF tree
-- [ ] Compute odometry out of provided sensor data
 - [ ] Create URDF model that can be used for Simulation (using Fusion 360)
 
 
