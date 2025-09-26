@@ -3,9 +3,10 @@
 <package format="3">
   <name>roomba_ros2_driver</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="nikolaus.lajtai@gmx.at">arva_master</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Interface node for steering iRobot Roombas via their serial connector.</description>
+  <maintainer email="nikolaus.lajtai@gmx.at">NikolausLaj</maintainer>
+  <maintainer email="julian.v.duda@gmail.com">dudajulian</maintainer>
+  <license>MIT License</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
