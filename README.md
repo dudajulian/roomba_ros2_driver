@@ -30,14 +30,20 @@ you can run this node which subscribes to `geometry_msgs/msg/Twist` commands. Al
 
 ## Usage
 
-1. **Build the package:**
+1. **Install dependencies**
+   ```bash
+   cd ~/ros2_ws
+   rosdep install --from-paths src --ignore-src -r -y
+   ```
+
+2. **Build the package:**
    ```bash
    cd ~/ros2_ws
    colcon build --packages-select roomba_ros2_driver
    source install/setup.bash
    ```
 
-2. **Launch the node:**
+3. **Launch the node:**
 
    - **Directly:**
      ```bash
@@ -49,16 +55,22 @@ you can run this node which subscribes to `geometry_msgs/msg/Twist` commands. Al
      ros2 launch roomba_ros2_driver roomba_ros2_driver.launch.py
      ```
 
-3. **Send velocity commands:**
+4. **Send velocity commands:**
    Publish to the `/cmd_vel` topic using `ros2 topic pub` or your own ROS2 navigation stack:
    ```bash
    ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.2, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.5}}"
    ```
 
    You can also control the robot interactively using the [teleop_twist_keyboard](https://github.com/ros2/teleop_twist_keyboard) package:
-   ```bash
-   ros2 run teleop_twist_keyboard teleop_twist_keyboard
-   ```
+      1. Install the package:
+      ```bash
+      sudo apt update
+      sudo apt install ros-humble-teleop-twist-keyboard
+      ```
+      2. Run the node:
+      ```bash
+      ros2 run teleop_twist_keyboard teleop_twist_keyboard
+      ```
    This will send velocity commands to `/cmd_vel` using your keyboard.
 
 
