@@ -34,12 +34,15 @@ you can run this node which subscribes to `geometry_msgs/msg/Twist` commands. Al
    ```bash
    cd ~/ros2_ws
    rosdep install --from-paths src --ignore-src -r -y
+   cd /src/roomba_ros2_driver
+   pip install .
+   cd ~/ros2_ws
    ```
 
 2. **Build the package:**
    ```bash
    cd ~/ros2_ws
-   colcon build --packages-select roomba_ros2_driver
+   colcon build --symlink-install --packages-select roomba_ros2_driver
    source install/setup.bash
    ```
 

@@ -1,0 +1,3 @@
+[console_scripts]
+roomba_ros2_driver = roomba_ros2_driver.roomba_ros2_driver:main
+

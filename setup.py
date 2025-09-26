@@ -1,6 +1,6 @@
-
+import os
 from setuptools import find_packages, setup
-import glob
+from glob import glob
 
 package_name = 'roomba_ros2_driver'
 
@@ -12,15 +12,20 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', glob.glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*.launch.py'))),
     ],
-    install_requires=['setuptools'],
-    zip_safe=True,
-    maintainer='arva_master',
-    maintainer_email='nikolaus.lajtai@gmx.at',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    install_requires=[
+        'pyserial',
+        'pycreate2',
+        'rclpy',
+        'setuptools',
+        ],
     tests_require=['pytest'],
+    zip_safe=True,
+    maintainer='NikolausLaj, dudajulian',
+    maintainer_email='nikolaus.lajtai@gmx.at, julian.v.duda@gmail.com',
+    description='Interface node for steering iRobot Roombas via their serial connector.',
+    license='MIT License',
     entry_points={
         'console_scripts': [
             'roomba_ros2_driver = roomba_ros2_driver.roomba_ros2_driver:main'
