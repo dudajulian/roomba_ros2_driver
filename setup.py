@@ -1,4 +1,3 @@
-
 from setuptools import find_packages, setup
 import glob
 
@@ -14,7 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob.glob('launch/*.launch.py')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'pycreate2'],
     zip_safe=True,
     maintainer='arva_master',
     maintainer_email='nikolaus.lajtai@gmx.at',
@@ -27,3 +26,4 @@ setup(
         ],
     },
 )
+
