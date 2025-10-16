@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: roomba-ros2-driver
+Version: 0.0.0
+Summary: Interface node for steering iRobot Roombas via their serial connector.
+Home-page: UNKNOWN
+Maintainer: NikolausLaj, dudajulian
+Maintainer-email: nikolaus.lajtai@gmx.at, julian.v.duda@gmail.com
+License: MIT License
+Platform: UNKNOWN
+License-File: LICENSE
+
+UNKNOWN
+
