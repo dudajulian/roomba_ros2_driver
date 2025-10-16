@@ -13,7 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', glob.glob('launch/*.launch.py')),
     ],
-    install_requires=['setuptools', 'pycreate2'],
+    install_requires=['setuptools', 'pycreate2', 'pyserial'],
     zip_safe=True,
     maintainer='arva_master',
     maintainer_email='nikolaus.lajtai@gmx.at',
